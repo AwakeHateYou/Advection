@@ -1,16 +1,22 @@
 #include <fstream>
 #include <iostream>
 #include <complex>
+#include <math.h>
 #include <omp.h>
 
-#define N 100
-
+#define N 10
+#define D 1.0
+#define D1 1.0
+#define D2 1.0
+#define W 1.0
+#define C 1.0
 using namespace std;
 
-complex<double> Ginzburg–LandauFunction(complex<double> cur, complex<double> next) {
-	return 1;
+complex<double> GinzburgLandauFunction(complex<double> cur, complex<double> nextI, complex<double> nextJ, double DX, double DY, double DT) {
+	return (-D * complex<double>(1, W) * cur + (D1 * (nextJ - cur) / DX) + (D2 * (nextI - cur) / DY) 
+		+ cur + complex<double>(-1, C) * abs(pow(cur, 2.0))* cur) * (DT / (- cur * (1.0 + D * complex<double>(1, W) * DT)));
 }
-void print(complex<double> **mass, double dx) {
+void print(complex<double> **mass) {
 	ofstream fout;
 	fout.open("output.txt");
 	//fout.precision(3);
@@ -28,7 +34,7 @@ void printGNU(complex<double> **mass, double dx, char* filename) {
 	//fout.precision(3);
 	for (int i = 0; i < N; i++) {
 		for (int j = 0; j < N; j++) {
-			fout << dx*i << ' ' << dx*j << ' ' << mass[i][j] << endl;
+			fout << dx*j << ' ' << dx*i << ' ' << mass[i][j] << endl; //i - Oy; j - Ox
 		}
 		fout << endl;
 	}
@@ -67,31 +73,19 @@ int main(int argc, char** argv) {
 
 	t1 = omp_get_wtime();
 
-	for (int k = 0; k < K; k++) {
+	for (int k = 0; k < 2; k++) {
 		//#pragma omp parallel for
 		for (i = 1; i < N - 1; i++)
 			for (j = 1; j < N - 1; j++) {
-				nextMatrix[i][j] = (DT, DX, DY, M[i][j], M[i - 1][j], M[i][j - 1], M[i][j + 1], M[i + 1][j]);
+				nextMatrix[i][j] = GinzburgLandauFunction(currentMatrix[i][j], currentMatrix[i + 1][j], currentMatrix[i][j + 1], DX, DY, DT);
 			}
-		SW = M;
-		M = V;
-		V = SW;
+		swap = currentMatrix;
+		currentMatrix = nextMatrix;
+		nextMatrix = swap;
 	}
 	t2 = omp_get_wtime();
 	cout << "Time: " << t2 - t1 << endl;
-
-	FILE *f = fopen("output.txt", "w");
-	if (f == NULL)
-		return 1;
-	else {
-		for (i = 0; i < N; i++) {
-			for (j = 0; j < N; j++)
-				fprintf(f, "%d %d %3.2f\n", i, j, V[i][j]);
-			fprintf(f, "\n");
-		}
-	}
-
-	fclose(f);
+	print(nextMatrix);
 
 	return 0;
 }
